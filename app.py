@@ -1,96 +1,136 @@
 import streamlit as st
-import pandas as pd
 
-st.set_page_config(page_title="亚马逊费用预测器", layout="wide")
-st.title("📦 亚马逊费用与未来预测工具")
+st.set_page_config(page_title="亚马逊2027费用规则总览", layout="wide")
+st.title("📋 亚马逊2027年美国站费用规则总览")
+st.caption("基于亚马逊官方公告与公开信息整理，核心变更生效时间：多数为 2027年1月15日，仓储规则为 2027年2月1日。")
 
-# --- 侧边栏：基础设置 ---
-st.sidebar.header("⚙️ 基础产品与费率设置")
-price = st.sidebar.number_input("产品售价 ($)", min_value=0.0, value=29.99, step=1.0)
-cost = st.sidebar.number_input("产品成本 ($)", min_value=0.0, value=10.0, step=1.0)
-fba_fee = st.sidebar.number_input("FBA 基础配送费 ($)", min_value=0.0, value=5.0, step=0.5)
-commission_rate = st.sidebar.slider("销售佣金比例 (%)", 0, 30, 15) / 100
-# 附加费
-fuel_surcharge_rate = st.sidebar.slider("物流附加费率 (%)", 0.0, 10.0, 3.5, step=0.1) / 100
+# --- 左侧导航 ---
+st.sidebar.header("📂 费用分类")
+fee_category = st.sidebar.radio(
+    "选择要查看的费用类型：",
+    [
+        "1. FBA 配送费",
+        "2. 销售佣金",
+        "3. 月度仓储费 + 仓储利用率附加费",
+        "4. 入库配置服务费",
+        "5. 促销费用",
+        "6. 退货处理费"
+    ]
+)
 
-# --- 侧边栏：库存与仓储设置 ---
-st.sidebar.header("📦 库存与仓储")
-daily_sales = st.sidebar.number_input("日均销量 (件)", min_value=1, value=10, step=1)
-current_inventory = st.sidebar.number_input("当前库存总量 (件)", min_value=0, value=500, step=10)
-unit_volume = st.sidebar.number_input("单件体积 (立方英尺)", min_value=0.01, value=0.2, step=0.01)
-monthly_storage_fee_per_cuft = st.sidebar.number_input("月度仓储费率 ($/立方英尺)", value=0.87, step=0.01)
+st.sidebar.markdown("---")
+st.sidebar.info("💡 费率细则可能因商品尺寸、售价区间、类目而异，实际以卖家后台费用预览为准。")
 
-# 惩罚费率设定
-low_stock_fee_per_unit = st.sidebar.number_input("低库存罚款预估 ($/件)", value=0.35, step=0.01)
-aged_stock_fee_per_unit = st.sidebar.number_input("老化库存附加费预估 ($/件)", value=0.50, step=0.01)
+# --- 主内容区域 ---
+if fee_category == "1. FBA 配送费":
+    st.header("📦 FBA 配送费")
+    
+    st.subheader("核心变化（2027年1月15日起）")
+    st.markdown("""
+    - **整体上涨**：平均每件售出商品的 FBA 配送费**上涨约 $0.19**，约占平均售价的 0.8%。
+    - **涨幅分化**：小号标准尺寸涨幅最明显。例如，售价 $10–$50 的小号标准件平均**上涨 $0.40/件**，而大号标准件仅上涨 $0.12/件。
+    - **燃油附加费延续**：在基础配送费之上，继续收取 **3.5%** 的燃油与物流相关附加费，不可退出。[reference:2]
+    - **大件尺寸重划分**：大件商品的尺寸分段重新调整，部分大件费率可能有涨有降。[reference:3]
+    """)
 
-# --- 主界面：计算逻辑 ---
-# 1. 单件利润计算
-total_revenue = price
-commission_fee = price * commission_rate
-fuel_fee = fba_fee * fuel_surcharge_rate
-total_fees = commission_fee + fba_fee + fuel_fee
-net_profit = total_revenue - cost - total_fees
-margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
+    st.subheader("费率结构示意（非完整表）")
+    st.markdown("FBA 配送费由 **尺寸分段 + 发货重量 + 售价区间** 共同决定。以下是部分公开费率片段：")
+    fee_data = {
+        "尺寸分段": ["小号标准（≤2 oz）", "大号标准（≤4 oz）", "小号大件（< $10）", "小号大件（$10+）"],
+        "售价 < $10": ["$2.43", "$…", "$6.73", "—"],
+        "售价 $10–$50": ["$3.32", "$…", "—", "$7.51"],
+        "售价 > $50": ["$3.58", "$…", "—", "—"],
+    }
+    st.table(fee_data)
+    st.caption("注：上表仅为公开片段示例，完整费率表需登录卖家后台查阅。燃油附加费 3.5% 需在上述金额基础上另行叠加。")
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("单件销售额", f"${total_revenue:.2f}")
-col2.metric("单件总费用", f"${total_fees:.2f}")
-col3.metric("单件净利润", f"${net_profit:.2f}", delta=f"{margin:.1f}% 利润率")
-col4.metric("预计断货天数", f"{int(current_inventory / daily_sales)} 天")
+elif fee_category == "2. 销售佣金":
+    st.header("💰 销售佣金")
+    
+    st.subheader("核心变化（2026年11月5日起 / 2027年）")
+    st.markdown("""
+    - **多数类目维持不变**：大部分商品的销售佣金百分比没有调整。[reference:4]
+    - **部分类目取消低价优惠**：以下类目**不再适用**原有的低价商品折扣费率，需按标准费率执行：**汽车和户外动力设备、小型电器、电脑、乐器、影音制作，以及媒介类商品（图书、DVD、音乐、软件、视频）**。[reference:5]
+    - **3D 打印机新费率**：自 2026年11月5日起，3D 打印机执行梯度佣金（见下表）。[reference:6]
+    - **翻新商品优惠**：符合条件类目的翻新商品，在 **2027年10月18日之前**享受 **10%** 的佣金优惠，系统自动生效。[reference:7]
+    """)
+
+    st.subheader("部分类目佣金费率参考（2027年）")
+    commission_data = {
+        "类目": ["3D 打印机", "汽车和户外动力设备", "小型电器", "电脑", "电子产品配件", "服装和配饰", "鞋靴", "其他（多数类目）"],
+        "费率结构": ["≤$200: 12%；>$200 部分: 5%", "12%", "≤$300: 15%；>$300 部分: 8%", "8%", "≤$100: 15%；>$100 部分: 8%", "$15以下: 5%；$15–$20: 10%；$20+: 17%", "15%", "15%"],
+        "最低佣金（每件）": ["$0.30"] * 8,
+    }
+    st.table(commission_data)
+    st.caption("完整类目费率请以卖家后台“销售佣金”页面或费用预览报告为准。")
+
+elif fee_category == "3. 月度仓储费 + 仓储利用率附加费":
+    st.header("🏗️ 月度仓储费 + 仓储利用率附加费")
+    
+    st.warning("**关键结构性变革：自 2027年2月1日起，规则彻底简化。**")
+
+    st.subheader("2027年2月1日之前（现行规则）")
+    st.markdown("""
+    费用 = **基本月度仓储费 + 仓储利用率附加费**
+    - **基本月度仓储费**：标准尺寸约 **$0.78/立方英尺**（非旺季），大件约 **$0.56/立方英尺**。
+    - **仓储利用率附加费**：根据库存周转周数叠加。周转越慢，附加费越高。例如，标准尺寸商品在 22–28 周时附加费为 $0.44/立方英尺，28–36 周为 $0.76/立方英尺，36–44 周为 $1.16/立方英尺。[reference:8]
+    """)
+
+    st.subheader("2027年2月1日之后（新规则）")
+    st.markdown("""
+    - **仓储利用率附加费取消**：不再根据库存周转周数额外收费。[reference:9]
+    - **超龄库存附加费取消**：不再作为一个独立项目收取。
+    - **合并为“统一月度仓储费”** ：基本仓储费与超龄附加费**合并为一个基于库龄的单一费率**。
+    - **对卖家的影响**：周转期**少于 6 个月**的库存，费用**持平或降低**；**超过 6 个月**的超龄库存，费用**上涨**。[reference:10]
+    """)
+    st.info("这意味着 2027 年的仓储成本管理重点，将从“控制周转速度”转向“控制库龄本身”。")
+
+elif fee_category == "4. 入库配置服务费":
+    st.header("🚚 入库配置服务费")
+    
+    st.subheader("核心变化：费率不变，但“地图”变了（2027年1月15日起）")
+    st.markdown("""
+    - **费率结构维持不变**：单点入仓、部分拆分、优化拆分三档的**价目表没有调整**。
+    - **入库区域从三个缩减为两个**：标准尺寸商品货件的**中部入库地点被整合至东部区域**。入库区域从原来的“东部、中部、西部”变为 **“东部、西部”** 两个。
+    - **实际影响**：虽然费率表上的数字没变，但卖家创建货件时的**路由选择、分仓逻辑和计费归属**都需要按新的两区口径重新规划。对于库存周转偏紧的品类，路由变化带来的时效影响可能比配送费上涨更值得关注。[reference:13]
+    """)
+
+elif fee_category == "5. 促销费用":
+    st.header("🏷️ 促销费用")
+    
+    st.subheader("关键变化：“买 X 赠 Y”不再免费（2027年1月15日起）")
+    st.markdown("""
+    长期以来作为免费清货/测款工具的 **“买 X 赠 Y”** 促销（包括买一赠一、百分比折扣等），将开始收费，计费结构与优惠券对齐：
+    - **预付费用**：每次创建促销收取 **$5**。[reference:14]
+    - **可变费用**：按促销产生的销售额收取 **2%**，单次促销**上限为 $2,000**。[reference:15]
+    - **新旧划断**：**2027年1月15日之前**创建的“买 X 赠 Y”促销，**不受**此新费用影响；只有该日期及之后创建的促销才会计费。[reference:16]
+    """)
+
+    st.subheader("其他促销费用参考")
+    st.markdown("""
+    - **优惠券**：预付 **$5** + 已兑换销售额的 **2.5%**（上限 $2,000），此规则持续至 2027年2月新条款生效。
+    - **旺季价格折扣（如 Prime Day、黑五网一）** ：预付 **$100/项** + 销售额的 **1.5%**（上限 $5,000）。
+    """)
+
+elif fee_category == "6. 退货处理费":
+    st.header("↩️ 退货处理费")
+    
+    st.subheader("核心变化：对齐 2027 年新的商品尺寸分段")
+    st.markdown("""
+    退货处理费的**费率金额本身并非全面普涨**，核心变化是**同步对齐 2027 年更新后的商品尺寸分段**。这意味着，如果你的商品在新分段中落入了不同的尺寸层级，适用的退货处理费可能发生变化。[reference:19]
+
+    **生效时间按类目区分：**
+    - **服装和鞋靴**：适用于 **2027年1月15日或之后**发货的商品。
+    - **其他高退货率品类**：适用于 **2027年2月1日或之后**发货的商品。[reference:20]
+    """)
+
+    st.subheader("费率示例（小号标准尺寸片段）")
+    return_data = {
+        "重量分段": ["≤ 2 oz", "2–4 oz", "4–6 oz", "4–8 oz"],
+        "2027 年退货处理费（示例）": ["$1.78", "$1.84", "$1.90", "$1.75"],
+    }
+    st.table(return_data)
+    st.caption("上表仅为小号标准尺寸的部分公开片段，完整费率需结合品类、尺寸分段和发货日期在后台查询。")
 
 st.markdown("---")
-
-# 2. 未来 6 个月库存与费用预测
-st.subheader("📈 未来 6 个月库存与费用预测")
-st.write("假设日均销量不变，且无新补货的情况下，你的库存演变与潜在费用：")
-
-forecast_data = []
-for month in range(1, 7):
-    # 每月按30天算
-    inventory_start = current_inventory - (daily_sales * 30 * (month - 1))
-    
-    if inventory_start <= 0:
-        break # 库存卖光了就停止预测
-        
-    inventory_end = max(0, inventory_start - (daily_sales * 30))
-    avg_inventory = (inventory_start + inventory_end) / 2
-    
-    # 仓储费计算
-    storage_fee = avg_inventory * unit_volume * monthly_storage_fee_per_cuft
-    
-    # 低库存预警 (假设低于28天供应量)
-    supply_days = inventory_start / daily_sales
-    low_stock_penalty = 0
-    if supply_days < 28 and inventory_start > 0:
-        low_stock_penalty = inventory_start * low_stock_fee_per_unit
-        
-    # 老化库存预警 (假设超过181天的部分)
-    aged_units = 0
-    aged_penalty = 0
-    if supply_days > 181:
-        aged_units = inventory_start - (181 * daily_sales)
-        aged_penalty = aged_units * aged_stock_fee_per_unit
-
-    forecast_data.append({
-        "月份": f"第 {month} 个月",
-        "期初库存": int(inventory_start),
-        "期末库存": int(inventory_end),
-        "预估仓储费": round(storage_fee, 2),
-        "低库存罚款风险": round(low_stock_penalty, 2),
-        "老化库存罚款风险": round(aged_penalty, 2),
-        "当月总仓储相关费用": round(storage_fee + low_stock_penalty + aged_penalty, 2)
-    })
-
-if forecast_data:
-    df = pd.DataFrame(forecast_data)
-    # 展示表格
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    
-    # 展示图表（各月总费用）
-    st.bar_chart(data=df, x="月份", y="当月总仓储相关费用", color="#ffaa00")
-else:
-    st.warning("当前库存不足以支撑一个月的销售，请尽快补货！")
-
-st.markdown("---")
-st.caption("💡 提示：您可以修改左侧侧边栏的数据，右侧的表格和图表会实时更新。")
+st.caption("数据整理自亚马逊卖家平台公开公告与行业信息，仅供参考，不构成运营建议。")
